@@ -1,0 +1,120 @@
+KEEPALIVE-PROXY FÜR MESHTASTIC-WLAN-NODES – ANLEITUNG
+=====================================================
+Version 1.8.0 / Oktober 2026 – Public Domain (Unlicense, siehe LICENSE)
+
+
+1. WOFÜR?
+---------
+Ein Meshtastic-Node trennt einen TCP/WLAN-Client, von dem er 15 Minuten lang nichts gehört hat.
+Der Mesh Hessen Client (getestet 1.6.4.5/1.6.4.6) sendet im Leerlauf nichts (kein Heartbeat) und
+wird deshalb alle 15 Minuten getrennt; er verbindet sich nach ca. 5 Sekunden neu. Dabei startet
+auch sein Virtual Node neu, und daran hängende Programme verlieren kurz die Verbindung.
+Zu erkennen im Client-Log (meshhessen-client.log): "Connection closed by remote host" /
+"Reader thread stopped unexpectedly" im Abstand von genau 15 Minuten.
+
+Der Proxy sitzt zwischen Client und Node:
+    Mesh Hessen Client  ->  127.0.0.1:4405 (Proxy)  ->  Node 192.168.x.x:4403
+Er reicht alle Bytes unverändert weiter und sendet dem Node nach einer einstellbaren Zeit
+Stille einen Heartbeat (ToRadio.heartbeat, genau wie die offiziellen Clients). Er fügt ihn nur
+zwischen zwei Nachrichten ein.
+
+
+2. EINRICHTEN
+-------------
+  1. KeepaliveProxy.exe (Ordner release/) in einen eigenen Ordner legen, z. B. C:\mesh, und
+     doppelklicken. Neben der EXE entstehen keepalive_proxy.json (Einstellungen) und
+     keepalive_proxy.log. Windows SmartScreen beim ersten Start: "Weitere Informationen" ->
+     "Trotzdem ausführen". Prüfsumme siehe KeepaliveProxy.exe.sha256.
+  2. Rechtsklick aufs Tray-Symbol "K" -> Setup …: IP-Adresse des Nodes eintragen, Speichern.
+  3. Im Mesh Hessen Client: Trennen, Host = 127.0.0.1, Port = 4405, Verbinden.
+  4. Autostart: Verknüpfung auf KeepaliveProxy.exe in shell:startup legen
+     (Win+R -> shell:startup).
+Ohne EXE: start_keepalive_proxy.bat startet den Proxy aus dem Quellcode (Python 3.10+ nötig).
+
+
+3. TRAY-SYMBOL UND MENÜ
+-----------------------
+Der Proxy pingt den Node regelmäßig (Standard jede Minute). Bei jedem Ping wechselt das Symbol
+"K" die Farbe zwischen Grün und Blau; rot = der Node hat nicht geantwortet, grau = noch kein Ping.
+Der Tooltip zeigt die letzte Antwortzeit und ob der Client über den Proxy verbunden ist.
+
+Klick aufs Symbol: rechts unten erscheinen die letzten 10 Pings mit Uhrzeit, Antwortzeit und ob
+ein Heartbeat nötig war. Das Fenster schließt nach 10 s von selbst (solange die Maus darauf
+steht, bleibt es offen). "Client nicht über den Proxy verbunden" heißt: der Client hängt noch
+direkt am Node (Port 4403) statt am Proxy (Port 4405) – dann sendet der Proxy keine Heartbeats.
+
+Rechtsklick:
+  Letzte 10 Pings …     wie Klick aufs Symbol
+  Message an Client     Aus / Bei jedem Ping / Bei jedem Heartbeat (siehe 4.)
+  Setup …               IP und Port des Nodes, Ping-Abstand, Heartbeat-Abstand (siehe unten)
+  Logdatei öffnen       keepalive_proxy.log
+  Beenden
+
+Setup:
+  IP-Adresse des Nodes            z. B. 192.168.10.41
+  Port des Nodes                  meist 4403
+  Ping alle (Minuten)             0,5 bis 60
+  Heartbeat nach (Minuten Stille) 0,5 bis 14 – der Node trennt nach 15 min Stille
+Unten steht, was im Client als Node einzutragen ist: "127.0.0.1  Port 4405". Der Proxy-Port ist
+fest 4405 (nur per --listen änderbar). Alle Werte gelten sofort und werden in
+keepalive_proxy.json gespeichert. Eine geänderte Node-Adresse trennt den Client einmal; er
+verbindet sich dann über den Proxy zum neuen Node.
+
+
+4. "PING PROXY" IM CLIENT
+-------------------------
+Message an Client: Der Proxy schickt dem Client eine simulierte Direktnachricht vom Absender
+"Ping Proxy" (!50696e67), z. B.
+    "Ping 10:30 – Proxy läuft, Node 192.168.10.41 antwortet (3 ms), Heartbeats 12"
+  Bei jedem Ping       im Ping-Abstand (Standard jede Minute)
+  Bei jedem Heartbeat  nur wenn der Client so lange still war, wie im Setup eingestellt –
+                       ist der Client aktiv, kommen weniger Nachrichten
+Die erste Nachricht kommt frühestens 30 s nach dem Verbinden. Die Nachrichten gehen nur an den
+Client, nicht ins Mesh. Kommen sie nicht mehr, hängt der Proxy oder die Verbindung.
+
+DM an "Ping Proxy": Der Proxy fängt sie ab, sie geht also nicht ins Mesh. Er bestätigt die
+Zustellung (Haken im Client) und antwortet mit
+    "Message not transmitted to Mesh - responded by keepalive tool"
+Kommt diese Antwort, läuft der Proxy.
+
+Tipp: Im Mesh Hessen Client 1.7.0 lässt sich das DM-Popup abschalten (dann nur ein roter
+Ungelesen-Hinweis) – angenehm, wenn "Bei jedem Ping" eingeschaltet ist.
+Der Autoresponder (https://github.com/hwbffm/autoresponder, ab 1.2.3) ignoriert "Ping Proxy".
+
+
+5. BEFEHLSZEILE
+---------------
+  KeepaliveProxy.exe [--node IP:PORT] [--listen 127.0.0.1:4405] [--interval SEKUNDEN]
+                     [--ping MINUTEN] [--notray] [--debug] [--log DATEI]
+  --node      Node-Adresse (Standard: aus dem Setup, sonst 192.168.10.41:4403)
+  --listen    Adresse für den Client (Standard 127.0.0.1:4405)
+  --interval  Sekunden Stille bis zum Heartbeat (Standard: aus dem Setup, sonst 60)
+  --ping      Minuten zwischen zwei Pings (Standard: aus dem Setup, sonst 1)
+  --notray    ohne Tray-Symbol laufen
+  --debug     Datenverkehr mitloggen (Fehlersuche)
+Werte von der Befehlszeile gehen den Werten aus dem Setup vor.
+
+
+6. HINWEISE
+-----------
+  - Läuft der Proxy nicht, erreicht der Client den Node nicht (Port 4405 antwortet nicht).
+  - Der Node nimmt nur EINEN TCP-Client an; ein zweiter wirft den ersten raus. Nichts anderes
+    (Handy-App, zweiter Client) darf direkt zum Node verbinden – Handy-Apps an den Virtual Node
+    des Clients hängen (Port 4404).
+  - Ein zweiter Proxy startet nicht (Port 4405 belegt) und meldet das im Log.
+  - Log keepalive_proxy.log neben der EXE: Start, Verbindungsbeginn, Heartbeat Nr. 1 und danach
+    etwa alle 15 Minuten einer, beim Trennen Dauer, Zahl der Heartbeats und Grund. Höchstens
+    drei Dateien zu 500 kB (.log, .log.1, .log.2); die älteste wird automatisch gelöscht.
+  - Der Proxy sendet selbst nichts ins Mesh. Nur der Heartbeat geht an den Node.
+  - Ausschalten: im Client wieder Host = IP des Nodes, Port = 4403 eintragen; den Proxy über
+    das Tray-Menü "Beenden" schließen und die Autostart-Verknüpfung löschen.
+
+
+7. DATEIEN
+----------
+  keepalive_proxy.py          das Programm (Quellcode)
+  release/KeepaliveProxy.exe  fertig gebaute EXE, Prüfsumme in KeepaliveProxy.exe.sha256
+  start_keepalive_proxy.bat   startet den Proxy aus dem Quellcode
+  build_exe.bat, make_icon.py baut dist\KeepaliveProxy.exe mit PyInstaller
+  Anleitung.txt, README.md    diese Beschreibung
+  LICENSE                     Unlicense (Public Domain)

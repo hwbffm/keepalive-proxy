@@ -1,0 +1,15 @@
+# Python-Umgebung
+.venv/
+__pycache__/
+
+# EXE-Build (PyInstaller) – Build-Ordner und .exe nicht einchecken, Ausnahme: fertige EXE in release/
+build/
+dist/
+*.spec
+*.exe
+!release/KeepaliveProxy.exe
+keepalive_proxy.ico
+
+# persönliche Einstellungen und Logs
+keepalive_proxy.json
+keepalive_proxy.log*
