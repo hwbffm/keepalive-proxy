@@ -5,10 +5,16 @@ Version 1.8.0 / Oktober 2026 – Public Domain (Unlicense, siehe LICENSE)
 
 1. WOFÜR?
 ---------
-Ein Meshtastic-Node trennt einen TCP/WLAN-Client, von dem er 15 Minuten lang nichts gehört hat.
-Der Mesh Hessen Client (getestet 1.6.4.5/1.6.4.6) sendet im Leerlauf nichts (kein Heartbeat) und
-wird deshalb alle 15 Minuten getrennt; er verbindet sich nach ca. 5 Sekunden neu. Dabei startet
-auch sein Virtual Node neu, und daran hängende Programme verlieren kurz die Verbindung.
+Ein Meshtastic-Node trennt einen TCP/WLAN-Client, von dem er 15 Minuten lang kein einziges Byte
+bekommen hat (beobachtet mit Firmware 2.7.26 auf einem ESP32-Node). Das ist eine Schutzfunktion:
+Der Node nimmt nur EINEN TCP-Client gleichzeitig an, und eine tote Verbindung (PC im Standby,
+WLAN weg, Programm abgestürzt) würde den Platz sonst dauerhaft blockieren.
+Es zählt nur, was der Client AN den Node schickt – empfangene Nachrichten zählen nicht. Die
+offiziellen Meshtastic-Apps senden deshalb regelmäßig einen Heartbeat. Der Meshhessen Client
+(getestet 1.6.4.5/1.6.4.6) sendet im Leerlauf nichts und wird deshalb alle 15 Minuten getrennt;
+er verbindet sich nach ca. 5 Sekunden neu und lädt Konfiguration und Knotenliste erneut. Dabei
+startet auch sein Virtual Node neu, und daran hängende Programme (Handy-App, Autoresponder)
+verlieren kurz die Verbindung.
 Zu erkennen im Client-Log (meshhessen-client.log): "Connection closed by remote host" /
 "Reader thread stopped unexpectedly" im Abstand von genau 15 Minuten.
 

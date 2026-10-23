@@ -4,13 +4,38 @@
 
 Kleines Windows-Tray-Programm gegen die **15-Minuten-Trennung**: Ein Meshtastic-Node trennt
 einen TCP-Client, von dem er 15 Minuten lang nichts gehört hat. Clients, die im Leerlauf
-nichts senden (z. B. [Mesh Hessen Client](https://www.meshhessen.de) 1.6.4.x), fliegen deshalb
-alle 15 Minuten raus. Der Proxy sitzt zwischen Client und Node und schickt dem Node bei
-Stille einen Heartbeat – so, wie es die offiziellen Meshtastic-Apps tun.
+nichts senden (z. B. [Meshhessen Client](https://github.com/SMLunchen/mh_windowsclient)),
+werden deshalb alle 15 Minuten vom Node getrennt. Der Proxy sitzt zwischen Client und Node und
+schickt dem Node bei Stille einen Heartbeat – so, wie es die offiziellen Meshtastic-Apps tun.
+Getestet mit Meshhessen Client 1.6.4.6 und 1.7.0.
 
 ```
 Client  ->  127.0.0.1:4405 (Proxy)  ->  Node 192.168.x.x:4403
 ```
+
+## Warum alle 15 Minuten?
+
+Die Meshtastic-Firmware schließt eine TCP-Verbindung (WLAN/Ethernet, Port 4403), wenn vom Client
+**15 Minuten lang kein einziges Byte** kommt (beobachtet mit Firmware 2.7.26 auf einem ESP32-Node).
+Das ist eine sinnvolle Schutzfunktion: Der Node nimmt nur **einen** TCP-Client gleichzeitig an, und
+eine tote Verbindung – PC im Standby, WLAN weg, Programm abgestürzt – würde diesen Platz sonst
+dauerhaft blockieren.
+
+Entscheidend ist nur, was der Client **an den Node** schickt. Empfangene Nachrichten zählen nicht:
+Auch wenn auf den Kanälen viel los ist, gilt ein Client, der nur zuhört, für den Node als still.
+Die offiziellen Meshtastic-Apps senden deshalb regelmäßig einen kleinen Heartbeat
+(`ToRadio.heartbeat`). Ein Client ohne Heartbeat wird nach 15 Minuten Leerlauf getrennt.
+
+Folgen bei jeder Trennung:
+
+- Der Client verbindet sich nach einigen Sekunden neu und lädt Konfiguration und Knotenliste erneut.
+- Sein Virtual Node startet neu; daran hängende Programme (Handy-App, Autoresponder) verlieren
+  kurz die Verbindung.
+- Im Client-Log (`meshhessen-client.log`) stehen „Connection closed by remote host“ /
+  „Reader thread stopped unexpectedly“ – im Abstand von **genau 15 Minuten**.
+
+Der Proxy ist ein Behelf für genau diesen Fall. Sendet ein Client künftig selbst Heartbeats, wird
+er nicht mehr gebraucht.
 
 ## Funktionen
 
@@ -50,6 +75,14 @@ Optionen: `--node IP:PORT`, `--listen 127.0.0.1:4405`, `--interval SEKUNDEN`, `-
 
 [Autoresponder für Meshtastic](https://github.com/hwbffm/autoresponder) – antwortet über den
 Virtual Node des Clients auf Kanal- und Direktnachrichten.
+
+## Danke
+
+Beide Programme bauen auf dem **[Meshhessen Client](https://github.com/SMLunchen/mh_windowsclient)**
+von SMLunchen auf ([Handbuch](https://meshhessenclient.de/handbuch/)). Ein großes Dankeschön an
+SMLunchen und alle Mitwirkenden für die tolle Arbeit! Der Proxy ist nur eine kleine Ergänzung für den WLAN-Betrieb. Der Client wird mit jedem Release
+besser, zuletzt 1.7.0 mit Funk-Echo, Telemetrie-Dashboard und 3D-Gelände auf der Karte. Danke auch
+an die **[Mesh-Hessen-Community](https://www.meshhessen.de)** für Netz, MQTT-Server und Dokumentation.
 
 ## Lizenz
 
