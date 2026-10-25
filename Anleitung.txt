@@ -1,6 +1,6 @@
 KEEPALIVE-PROXY FÜR MESHTASTIC-WLAN-NODES – ANLEITUNG
 =====================================================
-Version 1.8.0 / Oktober 2026 – Public Domain (Unlicense, siehe LICENSE)
+Version 1.8.1 / Oktober 2026 – Public Domain (Unlicense, siehe LICENSE)
 
 
 1. WOFÜR?

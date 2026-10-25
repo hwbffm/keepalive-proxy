@@ -68,7 +68,8 @@ import threading
 import time
 from pathlib import Path
 
-VERSION = "1.8.0"
+VERSION = "1.8.1"
+TRAY_CHECK_S = 20                                              # so oft prüfen, ob das Tray-Symbol noch da ist
 START1, START2 = 0x94, 0xC3
 HEARTBEAT = bytes([START1, START2, 0x00, 0x02, 0x3A, 0x00])   # Rahmen mit ToRadio{heartbeat}
 MAX_FRAME = 512                                                # größte gültige Nutzlast
@@ -771,7 +772,17 @@ def run_tray(log_path):
         pystray.MenuItem("Beenden", quit_app)))
     icon.run_detached()
 
-    shown = {"flip": None}
+    def tray_missing():
+        """True, wenn Windows das Tray-Symbol nicht (mehr) kennt – z. B. nach einem Absturz des
+        Explorers oder wenn es beim Hochfahren vor der Taskleiste angemeldet wurde."""
+        hwnd = getattr(icon, "_hwnd", None)
+        if not hwnd:
+            return False
+        from pystray._util import win32 as pw
+        data = pw.NOTIFYICONDATAW(cbSize=ctypes.sizeof(pw.NOTIFYICONDATAW), hWnd=hwnd, hID=id(icon), uFlags=0)
+        return not pw.Shell_NotifyIcon(pw.NIM_MODIFY, data)
+
+    shown = {"flip": None, "tray_check": time.time()}
 
     def poll():
         if state["last"] is not None and shown["flip"] != state["flip"]:
@@ -786,6 +797,11 @@ def run_tray(log_path):
         title = f"Keepalive-Proxy – {node} – {client}"[:127]
         if icon.title != title:
             icon.title = title
+        if time.time() - shown["tray_check"] >= TRAY_CHECK_S:
+            shown["tray_check"] = time.time()
+            if tray_missing():
+                log.warning("Tray-Symbol fehlt – wird neu angelegt")
+                icon._show()
         root.after(500, poll)
 
     root.after(500, poll)

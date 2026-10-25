@@ -1,6 +1,6 @@
 # Keepalive-Proxy für Meshtastic-WLAN-Nodes
 
-**Version 1.8.0 / Oktober 2026** – Public Domain ([Unlicense](LICENSE))
+**Version 1.8.1 / Oktober 2026** – Public Domain ([Unlicense](LICENSE))
 
 Kleines Windows-Tray-Programm gegen die **15-Minuten-Trennung**: Ein Meshtastic-Node trennt
 einen TCP-Client, von dem er 15 Minuten lang nichts gehört hat. Clients, die im Leerlauf
@@ -42,6 +42,8 @@ er nicht mehr gebraucht.
 - Reicht alle Daten unverändert in beide Richtungen weiter; Heartbeat nur zwischen zwei Nachrichten
 - Heartbeat-Abstand einstellbar (0,5–14 min Stille)
 - Tray-Icon **K**: wechselt bei jedem Ping des Nodes die Farbe (grün/blau), rot = Node antwortet nicht
+- Verschwindet das Icon (z. B. nach einem Absturz des Explorers), legt der Proxy es nach
+  spätestens 20 s neu an
 - Klick aufs Icon: die letzten 10 Pings mit Uhrzeit, Antwortzeit und Heartbeat-Status
 - Setup im Tray-Menü: IP und Port des Nodes, Ping- und Heartbeat-Abstand
 - **Message an Client** (zuschaltbar): simulierte DM vom Absender „Ping Proxy“ bei jedem Ping
